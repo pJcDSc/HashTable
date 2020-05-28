@@ -21,11 +21,17 @@ struct Node {
   Student* student;
 };
 
-bool parse(char*, Node**);
+bool parse(char*, Node**&);
+void printHelp();
+void addStudent(Node**&);
+void deleteStudent(Node**&);
+void generateRandom(Node**&);
+void printStudents(Node**);
 
 int main() {
-  Node* ht[5];
-  for (int i = 0; i < 5; i++) {
+  Node** ht = NULL;
+  ht = new Node*[5];
+  for (int i = 0; i < sizeof(ht)/sizeof(ht[0]); i++) {
     ht[i] = new Node();
   }
 
@@ -43,25 +49,67 @@ int main() {
   return 0;
 }
 
-bool parse(char* input, Node** ht) {
+bool parse(char* input, Node** &ht) {
   for (int i = 0; i < strlen(input); i++) {
     input[i] = toupper(input[i]);
   }
   if (strcmp(input, "HELP") == 0) {
-
+    printHelp();
   } else if (strcmp(input, "ADD") == 0) {
-
+    addStudent(ht);
   } else if (strcmp(input, "DELETE") == 0) {
-
+    deleteStudent(ht);
   } else if (strcmp(input, "RANDOM") == 0) {
-
+    generateRandom(ht);
   } else if (strcmp(input, "QUIT") == 0) {
     return false;
   } else if (strcmp(input, "PRINT") == 0) {
-
+    printStudents(ht);
   } else {
     cout << "Sorry, input not recognized" << endl;
   }
   return true;
 }
 
+
+void printHelp() {
+  cout << "StudentList help" << endl;
+  cout << "HELP: Print this help message" << endl;
+  cout << "ADD: Add a student to the student list" << endl;
+  cout << "DELETE: Delete a student from the student list" << endl;
+  cout << "RANDOM: Add a number of random students to the student list" << endl;
+  cout << "QUIT: Quit the program" << endl;
+}
+
+void addStudent(Node**& ht) {
+  Student* newS = new Student();
+  cout << "Enter student first name" << endl;
+  cin.get(newS->firstName, 25);
+  cin.clear();
+  cin.ignore(999, '\n');
+  cout << "Enter student last name" << endl;
+  cin.get(newS->lastName, 25);
+  cin.clear();
+  cin.ignore(999, '\n');
+  cout << "Enter student id" << endl;
+  cin >> newS->id;
+  cin.clear();
+  cin.ignore(999, '\n');
+  cout << "Enter student gpa" << endl;
+  cin >> newS->gpa;
+  cin.clear();
+  cin.ignore(999, '\n');
+  //Something something add student
+}
+
+void deleteStudent(Node**& ht) {
+
+}
+
+void generateRandom(Node**& ht) {
+
+}
+
+void printStudents(Node** ht) {
+
+}
