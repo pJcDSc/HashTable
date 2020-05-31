@@ -1,3 +1,4 @@
+
 /*
 Author: Peter Jin
 Date: 5/26/20
@@ -7,13 +8,15 @@ Hash table student list
 #include <iostream>
 #include <cstring>
 
-using namespace std;
-
 struct Student {
   int id;
   float gpa;
   char firstName[25];
   char lastName[25];
+
+  bool operator==(const Student &o) {
+    return o.id == this->id && strcmp(o.firstName, this->firstName) == 0 && strcmp(o.lastName, this->lastName) == 0;
+  }
 };
 
 struct Node {
@@ -21,25 +24,43 @@ struct Node {
   Student* student;
 };
 
-bool parse(char*, Node**&, int);
+bool parse(char*, Node**&, int&, int&);
 void printHelp();
-void addStudent(Node**&, int);
+void addStudent(Node**&, int&, int&);
 void deleteStudent(Node**&);
 void generateRandom(Node**&);
 void printStudents(Node**, int);
-bool addChain(Node**&, int, Student*);
-void rehash(Node**&);
+int addChain(Node**&, int, Student*);
+void rehash(Node**&, int&);
 int powMod(int, int, int);
 int getHash(char*, int);
+
+using namespace std;
 
 int main() {
   Node** ht = NULL;
   int size = 5;
+  int numStudents = 0;
   ht = new Node*[size];
   for (int i = 0; i < size; i++) {
     ht[i] = NULL;
   }
 
+  Student aa;
+  strcpy(aa.firstName, "h");
+  strcpy(aa.lastName, "h");
+  aa.id = 1;
+  aa.gpa = 0;
+
+  Student bb;
+  strcpy(bb.firstName, aa.firstName);
+  strcpy(bb.lastName, aa.lastName);
+  bb.id = 11;
+  bb.gpa = 0;
+
+  if (aa==bb) cout << "HOORAYY" << endl;
+  else cout << "aW" << endl;
+  
   cout << "Welcome to student list with hashtable" << endl;
   cout << "Type help for more commands" << endl;
   bool run = true;
@@ -49,19 +70,20 @@ int main() {
     cin.clear();
     cin.ignore(999, '\n');
 
-    run = parse(input, ht, size);
+    cout << "Ht: " << ht << ", size: " << size << ", students: " << numStudents << endl;
+    run = parse(input, ht, size, numStudents);
   }
   return 0;
 }
 
-bool parse(char* input, Node** &ht, int sz) {
+bool parse(char* input, Node** &ht, int &sz, int &ns) {
   for (int i = 0; i < strlen(input); i++) {
     input[i] = toupper(input[i]);
   }
   if (strcmp(input, "HELP") == 0) {
     printHelp();
   } else if (strcmp(input, "ADD") == 0) {
-    addStudent(ht, sz);
+    addStudent(ht, sz, ns);
   } else if (strcmp(input, "DELETE") == 0) {
     deleteStudent(ht);
   } else if (strcmp(input, "RANDOM") == 0) {
@@ -83,10 +105,11 @@ void printHelp() {
   cout << "ADD: Add a student to the student list" << endl;
   cout << "DELETE: Delete a student from the student list" << endl;
   cout << "RANDOM: Add a number of random students to the student list" << endl;
+  cout << "PRINT: Print the students in the list" << endl;
   cout << "QUIT: Quit the program" << endl;
 }
 
-void addStudent(Node**& ht, int sz) {
+void addStudent(Node**& ht, int &sz, int &ns) {
   Student* newS = new Student();
   cout << "Enter student first name" << endl;
   cin.get(newS->firstName, 25);
@@ -104,35 +127,66 @@ void addStudent(Node**& ht, int sz) {
   cin >> newS->gpa;
   cin.clear();
   cin.ignore(999, '\n');
-  int hash = (getHash(newS->firstName, sz) + getHash(newS->lastName, sz))%sz;
-  cout << "hash = " << hash << endl;
-  if(addChain(ht, hash, newS)) {
+  int hash = (getHash(newS->firstName, sz) + getHash(newS->lastName, sz) + newS->id)%sz;
+  int ret = addChain(ht, hash, newS);
+  if (ret == -1) {
+    cout << "Duplicate student (first name, last name, id match) found, student not added to list" << endl;
+    return;
+  }
+  ns++;
+  if(ret > 3|| ns > sz/2) {
     cout << "its rehash time" << endl;
-    rehash(ht);
+    rehash(ht, sz);
   }
   cout << "Student added" << endl;
 }
 
-bool addChain(Node**& ht, int h, Student* s) {
+//Returns length of chain
+int addChain(Node**& ht, int h, Student* s) {
   if (ht[h] == NULL) {
     ht[h] = new Node();
     ht[h] -> student = s;
-    return false;
+    return 0;
   }
   cout << "Collide, yo" << endl;
   int ln = 0;
   Node* link = ht[h];
   while (link -> next != NULL) {
+    if (*(link -> student) == *s) { //Duplicate student
+      return -1;
+    }
     link = link -> next;
     ln++;
   }
+  if (*(link -> student) == *s) { //Duplicate student
+      return -1;
+  }
   link -> next = new Node();
   link -> next -> student = s;
-  return ln > 4;
+  return ln;
 }
 
-void rehash(Node**& ht) {
-
+void rehash(Node**& ht, int &sz) {
+  Node** tempnew = new Node*[sz*2];
+  for (int i = 0; i < sz*2; i++) {
+    tempnew[i] = NULL;
+  }
+  for (int i = 0; i < sz; i++) {
+    if (ht[i] == NULL) continue;
+    Node* n = ht[i];
+    do {
+      Student* s = n->student;
+      int hash = (getHash(s->firstName, sz*2) + getHash(s->lastName, sz*2) + s->id)%(sz*2);
+      addChain(tempnew, hash, s);
+      n=n->next;
+    } while (n != NULL);
+  }
+  cout << ht << endl;
+  delete ht; //Deallocate old hashtable
+  ht = tempnew;
+  cout << ht << endl;
+  sz *= 2;
+  
 }
 
 void deleteStudent(Node**& ht) {
@@ -154,6 +208,7 @@ void printStudents(Node** ht, int sz) {
       cout << "Student: " << n->student->firstName << " " << n->student->lastName << endl;
       cout << "ID: " << n->student->id << endl;
       cout << "GPA: " << n->student->gpa << endl;
+      cout << "Hash: " << i << endl; //Debug only
       n = n->next;
     } while (n != NULL);
   }
@@ -161,6 +216,7 @@ void printStudents(Node** ht, int sz) {
   cout << endl;
 }
 
+//This function is irrelevant.
 int powMod(int a, int b, int mod) { //Return a^b%mod for hash function, in case of long string
   int ret = 1;
   for (int i = 0; i < b; i++) {
@@ -177,5 +233,7 @@ int getHash(char* s, int sz) { //sz is size of hashtable
     hash += int(s[i]);
     hash %= sz;
   }
+  hash *= 769; 
+  hash %= sz;
   return hash;
 }
