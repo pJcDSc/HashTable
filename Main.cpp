@@ -7,6 +7,9 @@ Hash table student list
 
 #include <iostream>
 #include <cstring>
+#include <vector>
+#include <fstream>  //file input
+#include <stdlib.h> //rand
 
 struct Student {
   int id;
@@ -24,18 +27,19 @@ struct Node {
   Student* student;
 };
 
+using namespace std;
+
 bool parse(char*, Node**&, int&, int&);
 void printHelp();
 void addStudent(Node**&, int&, int&);
-void deleteStudent(Node**&);
+void deleteStudent(Node**&, int, int&);
 void generateRandom(Node**&);
 void printStudents(Node**, int);
 int addChain(Node**&, int, Student*);
 void rehash(Node**&, int&);
 int powMod(int, int, int);
 int getHash(char*, int);
-
-using namespace std;
+bool readnames(vector<char*>*, char*);
 
 int main() {
   Node** ht = NULL;
@@ -45,21 +49,15 @@ int main() {
   for (int i = 0; i < size; i++) {
     ht[i] = NULL;
   }
-
-  Student aa;
-  strcpy(aa.firstName, "h");
-  strcpy(aa.lastName, "h");
-  aa.id = 1;
-  aa.gpa = 0;
-
-  Student bb;
-  strcpy(bb.firstName, aa.firstName);
-  strcpy(bb.lastName, aa.lastName);
-  bb.id = 11;
-  bb.gpa = 0;
-
-  if (aa==bb) cout << "HOORAYY" << endl;
-  else cout << "aW" << endl;
+  
+  vector<char*>* fnames = new vector<char*>();
+  vector<char*>* lnames = new vector<char*>();
+  char* fileName = new char(); strcpy(fileName, "fnms.txt");
+  if (!readnames(fnames, fileName)) return 1;
+  strcpy(fileName, "lnms.txt");
+  if (!readnames(lnames, fileName)) return 1;
+  
+  srand(time(NULL));
   
   cout << "Welcome to student list with hashtable" << endl;
   cout << "Type help for more commands" << endl;
@@ -85,7 +83,7 @@ bool parse(char* input, Node** &ht, int &sz, int &ns) {
   } else if (strcmp(input, "ADD") == 0) {
     addStudent(ht, sz, ns);
   } else if (strcmp(input, "DELETE") == 0) {
-    deleteStudent(ht);
+    deleteStudent(ht, sz, ns);
   } else if (strcmp(input, "RANDOM") == 0) {
     generateRandom(ht);
   } else if (strcmp(input, "QUIT") == 0) {
@@ -98,6 +96,19 @@ bool parse(char* input, Node** &ht, int &sz, int &ns) {
   return true;
 }
 
+bool readnames(vector<char*>* names, char* fname) {
+  ifstream fs (fname);
+  if (!fs.is_open()) {
+    cout << "Error: Could not read from file \"" << fname << "\". Aborting." << endl;
+    return false;
+  }
+  for (int i = 0; i < 1000; i++) {
+    char* name = new char();
+    fs.getline(name, 20);
+    names -> push_back(name);
+  }
+  return true;
+}
 
 void printHelp() {
   cout << "StudentList help" << endl;
@@ -127,7 +138,7 @@ void addStudent(Node**& ht, int &sz, int &ns) {
   cin >> newS->gpa;
   cin.clear();
   cin.ignore(999, '\n');
-  int hash = (getHash(newS->firstName, sz) + getHash(newS->lastName, sz) + newS->id)%sz;
+  int hash = (getHash(newS->firstName, sz) + getHash(newS->lastName, sz)*3 + newS->id)%sz;
   int ret = addChain(ht, hash, newS);
   if (ret == -1) {
     cout << "Duplicate student (first name, last name, id match) found, student not added to list" << endl;
@@ -176,7 +187,7 @@ void rehash(Node**& ht, int &sz) {
     Node* n = ht[i];
     do {
       Student* s = n->student;
-      int hash = (getHash(s->firstName, sz*2) + getHash(s->lastName, sz*2) + s->id)%(sz*2);
+      int hash = (getHash(s->firstName, sz*2) + getHash(s->lastName, sz*2)*3 + s->id)%(sz*2);
       addChain(tempnew, hash, s);
       n=n->next;
     } while (n != NULL);
@@ -189,8 +200,45 @@ void rehash(Node**& ht, int &sz) {
   
 }
 
-void deleteStudent(Node**& ht) {
-
+void deleteStudent(Node**& ht, int sz, int &ns) {
+  Student* s = new Student();
+  cout << "Enter student first name" << endl;
+  cin.get(s->firstName, 25);
+  cin.clear();
+  cin.ignore(999, '\n');
+  cout << "Enter student last name" << endl;
+  cin.get(s->lastName, 25);
+  cin.clear();
+  cin.ignore(999, '\n');
+  cout << "Enter student id" << endl;
+  cin >> s->id;
+  cin.clear();
+  cin.ignore(999, '\n');
+  int hash = (getHash(s->firstName, sz) + getHash(s->lastName, sz)*3 + s->id)%sz;
+  for (int i = 0; i < sz; i++) {
+    if (ht[i] == NULL) continue;
+    Node* n = ht[i];
+    Node* prev = NULL;
+    do {
+      if (*(n -> student) == *s) {
+	if (prev == NULL) {
+	  ht[i] = n->next;
+	  delete n;
+	}
+	else {
+	  prev->next = n->next;
+	  delete n;
+	}
+	ns--;
+	cout << "Student deleted." << endl;
+	return;
+      }
+      prev = n;
+      n = n->next;
+    } while (n != NULL);
+  }
+  cout << "Student with corresponding name and id not found" << endl;
+  return;
 }
 
 void generateRandom(Node**& ht) {
