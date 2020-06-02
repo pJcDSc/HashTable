@@ -14,8 +14,8 @@ Hash table student list
 struct Student {
   int id;
   float gpa;
-  char firstName[25];
-  char lastName[25];
+  char firstName[35];
+  char lastName[35];
 
   bool operator==(const Student &o) {
     return o.id == this->id && strcmp(o.firstName, this->firstName) == 0 && strcmp(o.lastName, this->lastName) == 0;
@@ -29,17 +29,16 @@ struct Node {
 
 using namespace std;
 
-bool parse(char*, Node**&, int&, int&);
+bool parse(char*, Node**&, int&, int&, vector<char*>*, vector<char*>*);
 void printHelp();
 void addStudent(Node**&, int&, int&);
 void deleteStudent(Node**&, int, int&);
-void generateRandom(Node**&);
+void generateRandom(Node**&, vector<char*>*, vector<char*>*, int&, int&);
 void printStudents(Node**, int);
 int addChain(Node**&, int, Student*);
 void rehash(Node**&, int&);
-int powMod(int, int, int);
 int getHash(char*, int);
-bool readnames(vector<char*>*, char*);
+bool readnames(vector<char*>*, char*, int);
 
 int main() {
   Node** ht = NULL;
@@ -53,12 +52,10 @@ int main() {
   vector<char*>* fnames = new vector<char*>();
   vector<char*>* lnames = new vector<char*>();
   char* fileName = new char(); strcpy(fileName, "fnms.txt");
-  if (!readnames(fnames, fileName)) return 1;
+  if (!readnames(fnames, fileName, 2000)) return 1;
   strcpy(fileName, "lnms.txt");
-  if (!readnames(lnames, fileName)) return 1;
-  
-  srand(time(NULL));
-  
+  if (!readnames(lnames, fileName, 1000)) return 1;
+
   cout << "Welcome to student list with hashtable" << endl;
   cout << "Type help for more commands" << endl;
   bool run = true;
@@ -68,13 +65,13 @@ int main() {
     cin.clear();
     cin.ignore(999, '\n');
 
-    cout << "Ht: " << ht << ", size: " << size << ", students: " << numStudents << endl;
-    run = parse(input, ht, size, numStudents);
+    run = parse(input, ht, size, numStudents, fnames, lnames);
   }
+  delete[] ht;
   return 0;
 }
 
-bool parse(char* input, Node** &ht, int &sz, int &ns) {
+bool parse(char* input, Node** &ht, int &sz, int &ns, vector<char*>* fnames, vector<char*>* lnames) {
   for (int i = 0; i < strlen(input); i++) {
     input[i] = toupper(input[i]);
   }
@@ -85,26 +82,29 @@ bool parse(char* input, Node** &ht, int &sz, int &ns) {
   } else if (strcmp(input, "DELETE") == 0) {
     deleteStudent(ht, sz, ns);
   } else if (strcmp(input, "RANDOM") == 0) {
-    generateRandom(ht);
+    generateRandom(ht, fnames, lnames, ns, sz);
   } else if (strcmp(input, "QUIT") == 0) {
     return false;
   } else if (strcmp(input, "PRINT") == 0) {
     printStudents(ht, sz);
   } else {
-    cout << "Sorry, input not recognized" << endl;
+    cout << "Sorry, input \"" << input << "\" not recognized" << endl;
   }
   return true;
 }
 
-bool readnames(vector<char*>* names, char* fname) {
+bool readnames(vector<char*>* names, char* fname, int n) {
   ifstream fs (fname);
   if (!fs.is_open()) {
     cout << "Error: Could not read from file \"" << fname << "\". Aborting." << endl;
     return false;
   }
-  for (int i = 0; i < 1000; i++) {
+  for (int i = 0; i < n; i++) {
     char* name = new char();
     fs.getline(name, 20);
+    if (n == 1000) { //lastnames file is a little weird
+      name[strlen(name)-1] = '\0';
+    }
     names -> push_back(name);
   }
   return true;
@@ -146,7 +146,6 @@ void addStudent(Node**& ht, int &sz, int &ns) {
   }
   ns++;
   if(ret > 3|| ns > sz/2) {
-    cout << "its rehash time" << endl;
     rehash(ht, sz);
   }
   cout << "Student added" << endl;
@@ -159,7 +158,6 @@ int addChain(Node**& ht, int h, Student* s) {
     ht[h] -> student = s;
     return 0;
   }
-  cout << "Collide, yo" << endl;
   int ln = 0;
   Node* link = ht[h];
   while (link -> next != NULL) {
@@ -192,12 +190,9 @@ void rehash(Node**& ht, int &sz) {
       n=n->next;
     } while (n != NULL);
   }
-  cout << ht << endl;
   delete ht; //Deallocate old hashtable
   ht = tempnew;
-  cout << ht << endl;
-  sz *= 2;
-  
+  sz *= 2;  
 }
 
 void deleteStudent(Node**& ht, int sz, int &ns) {
@@ -241,8 +236,32 @@ void deleteStudent(Node**& ht, int sz, int &ns) {
   return;
 }
 
-void generateRandom(Node**& ht) {
-  
+void generateRandom(Node**& ht, vector<char*>* fnames, vector<char*>* lnames, int& ns, int& sz) {
+  cout << "Please enter number of students to generate (max 1000)" << endl;
+  int num;
+  cin >> num;
+  cin.ignore(999, '\n');
+  if (num <= 0) {
+    cout << "Please enter a number between 1 and 1000" << endl;
+    return;
+  }
+  if (num > 1000) {
+    cout << "Number entered is greater than 1000, so only 1000 students will be generated." << endl;
+    num = 1000;
+  }
+  for (int i = 0; i < num; i++) {
+    Student* s = new Student();
+    int random = rand() % 2000;
+    strcpy(s -> firstName, fnames -> at(random));
+    random = rand() % 1000;
+    strcpy(s -> lastName, lnames -> at(random));
+    s -> id = ns++;
+    s -> gpa = float(rand()%350+100)/100;
+    int hash = (getHash(s->firstName, sz) + getHash(s->lastName, sz)*3 + s->id)%sz;
+    int chainlength = addChain(ht, hash, s);
+    if (chainlength > 3 || ns > sz/2) rehash(ht, sz); 
+  }
+  cout << "Students generated." << endl;
 }
 
 void printStudents(Node** ht, int sz) {
@@ -262,16 +281,6 @@ void printStudents(Node** ht, int sz) {
   }
   if (!students) cout << "Student list is empty" << endl;
   cout << endl;
-}
-
-//This function is irrelevant.
-int powMod(int a, int b, int mod) { //Return a^b%mod for hash function, in case of long string
-  int ret = 1;
-  for (int i = 0; i < b; i++) {
-    ret *= a;
-    ret %= mod;
-  }
-  return ret;
 }
 
 int getHash(char* s, int sz) { //sz is size of hashtable
