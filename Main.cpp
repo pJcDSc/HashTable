@@ -56,6 +56,8 @@ int main() {
   strcpy(fileName, "lnms.txt");
   if (!readnames(lnames, fileName, 1000)) return 1;
 
+  srand(time(NULL)); //oops forgot to set random seed
+
   cout << "Welcome to student list with hashtable" << endl;
   cout << "Type help for more commands" << endl;
   bool run = true;
@@ -220,23 +222,25 @@ void deleteStudent(Node**& ht, int sz, int &ns) {
   
   Node* n = ht[hash];
   Node* prev = NULL;
-  do { //Loop through corresponding chain
-    if (*(n -> student) == *s) { 
-      if (prev == NULL) { //Casework for deletion
-	ht[hash] = n->next;
-	delete n;
-      }
-      else {
-	prev->next = n->next;
-	delete n;
-      }
-      ns--;
-      cout << "Student deleted." << endl;
-      return;
-    } 
-    prev = n;
-    n = n->next;
-  } while (n != NULL);
+  if (ht[hash] != NULL) {
+    do { //Loop through corresponding chain
+      if (*(n -> student) == *s) { 
+	if (prev == NULL) { //Casework for deletion
+	  ht[hash] = n->next;
+	  delete n;
+	}
+	else {
+	  prev->next = n->next;
+	  delete n;
+	}
+	ns--;
+	cout << "Student deleted." << endl;
+	return;
+      } 
+      prev = n;
+      n = n->next;
+    } while (n != NULL);
+  }
   //reach end of chain, that means no student in the chain matched
   cout << "Student with corresponding name and id not found" << endl;
   return;
